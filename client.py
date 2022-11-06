@@ -47,8 +47,8 @@ class FlowerClient(fl.client.NumPyClient):
         set_parameters(self.net, parameters)
         # self.net.set_weights(parameters)
         # train model on local device with one epoch
-        # train(self.net, self.train_loader, self.test_loader, epochs=10)
-        train_fedfsl(self.net, self.train_loader)
+        train(self.net, self.train_loader, self.test_loader, epochs=10)
+        # train_fedfsl(self.net, self.train_loader)
         # return parameters back to the central server for aggregation
         return get_parameters(self.net), len(self.train_loader.dataset), {}
 
@@ -59,13 +59,13 @@ class FlowerClient(fl.client.NumPyClient):
         set_parameters(self.net, parameters)
         # self.net.set_weights(parameters)
         # Evaluate global model parameters on the local val data
-        # loss, accuracy = test(self.net, self.test_loader)
-        total_predictions, correct_predictions = test_fedfsl(self.net, self.test_loader)
-        # print(f"Evaluation loss: {loss} and accuracy: {accuracy}")
-        # return float(loss), len(self.test_loader), {"accuracy": float(accuracy)}
-        # test_fedfsl(self.net, self.test_loader)
-        return len(self.test_loader), {"total predictions": total_predictions,
-                                       "correct predictions": correct_predictions}
+        loss, accuracy = test(self.net, self.test_loader)
+        # total_predictions, correct_predictions = test_fedfsl(self.net, self.test_loader)
+        print(f"Evaluation loss: {loss} and accuracy: {accuracy}")
+        return float(loss), len(self.test_loader), {"accuracy": float(accuracy)}
+
+        #return len(self.test_loader), {"total predictions": total_predictions,
+        #                               "correct predictions": correct_predictions}
 
 
 def main() -> None:

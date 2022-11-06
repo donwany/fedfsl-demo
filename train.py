@@ -115,7 +115,7 @@ def train(model, train_loader, test_loader, epochs: int):
         for (support_images, support_labels, query_images, query_labels, class_ids,) in train_loader:
             optimizer.zero_grad()
 
-            outputs = model(support_images, support_labels, query_images)  # .detach()
+            outputs = model(support_images.cuda(), support_labels.cuda(), query_images.cuda()).detach()
 
             loss = criterion(outputs, query_labels)
             loss.backward()  # back props
