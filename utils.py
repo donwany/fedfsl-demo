@@ -40,10 +40,10 @@ def load_data():
     N_QUERY = 10  # Number of images per class in the query set
 
     N_TRAINING_EPISODES = 5
-    N_EVALUATION_TASKS = 100
+    N_EVALUATION_TASKS = 5
 
     train_set.get_labels = lambda: [instance[1] for instance in train_set._flat_character_images]
-    test_set.get_labels = lambda: [instance[1] for instance in test_set._flat_character_images]
+    test_set.get_labels  = lambda: [instance[1] for instance in test_set._flat_character_images]
 
     train_sampler = TaskSampler(
         train_set,

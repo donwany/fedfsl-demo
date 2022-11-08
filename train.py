@@ -6,21 +6,19 @@ from tqdm import tqdm
 
 
 def fit(
-        support_images: torch.Tensor,
-        support_labels: torch.Tensor,
-        query_images: torch.Tensor,
-        query_labels: torch.Tensor,
-        net
+    support_images: torch.Tensor,
+    support_labels: torch.Tensor,
+    query_images: torch.Tensor,
+    query_labels: torch.Tensor,
+    net,
 ) -> float:
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
     optimizer.zero_grad()
-    classification_scores = net(
-        support_images, support_labels, query_images
-    )
+    classification_scores = net(support_images.cuda(), support_labels.cuda(), query_images.cuda())
 
-    loss = criterion(classification_scores, query_labels)
+    loss = criterion(classification_scores, query_labels.cuda())
     loss.backward()
     optimizer.step()
 
@@ -36,11 +34,11 @@ def train_fedfsl(net, train_loader: DataLoader):
 
     with tqdm(enumerate(train_loader), total=len(train_loader)) as tqdm_train:
         for episode_index, (
-                support_images,
-                support_labels,
-                query_images,
-                query_labels,
-                _,
+            support_images,
+            support_labels,
+            query_images,
+            query_labels,
+            _,
         ) in tqdm_train:
             loss_value = fit(
                 net, support_images, support_labels, query_images, query_labels
@@ -55,24 +53,22 @@ def train_fedfsl(net, train_loader: DataLoader):
 
 
 def evaluate_on_one_task(
-        support_images: torch.Tensor,
-        support_labels: torch.Tensor,
-        query_images: torch.Tensor,
-        query_labels: torch.Tensor,
-        net
+    support_images: torch.Tensor,
+    support_labels: torch.Tensor,
+    query_images: torch.Tensor,
+    query_labels: torch.Tensor,
+    net,
 ):
     """
     Returns the number of correct predictions of query labels, and the total number of predictions.
     """
     return (
-                   torch.max(
-                       net(support_images, support_labels, query_images)
-                       .detach()
-                       .data,
-                       1,
-                   )[1]
-                   == query_labels
-           ).sum().item(), len(query_labels)
+        torch.max(
+            net(support_images.cuda(), support_labels.cuda(), query_images.cuda()).detach().data,
+            1,
+        )[1]
+        == query_labels.cuda()
+    ).sum().item(), len(query_labels)
 
 
 def test_fedfsl(net, test_loader: DataLoader):
@@ -85,11 +81,11 @@ def test_fedfsl(net, test_loader: DataLoader):
     net.eval()
     with torch.no_grad():
         for episode_index, (
-                support_images,
-                support_labels,
-                query_images,
-                query_labels,
-                class_ids,
+            support_images,
+            support_labels,
+            query_images,
+            query_labels,
+            class_ids,
         ) in tqdm(enumerate(test_loader), total=len(test_loader)):
             correct, total = evaluate_on_one_task(
                 net, support_images, support_labels, query_images, query_labels
@@ -112,10 +108,18 @@ def train(model, train_loader, test_loader, epochs: int):
     for epoch in range(epochs):
         correct, total, epoch_loss = 0, 0, 0.0
 
-        for (support_images, support_labels, query_images, query_labels, class_ids,) in train_loader:
+        for (
+            support_images,
+            support_labels,
+            query_images,
+            query_labels,
+            class_ids,
+        ) in train_loader:
             optimizer.zero_grad()
 
-            outputs = model(support_images.cuda(), support_labels.cuda(), query_images.cuda()).detach()
+            outputs = model(
+                support_images.cuda(), support_labels.cuda(), query_images.cuda()
+            ).detach()
 
             loss = criterion(outputs, query_labels)
             loss.backward()  # back props
@@ -137,7 +141,13 @@ def test(model, test_loader):
     correct, total, loss = 0, 0, 0.0
     model.eval()
     with torch.no_grad():
-        for (support_images, support_labels, query_images, query_labels, class_ids,) in test_loader:
+        for (
+            support_images,
+            support_labels,
+            query_images,
+            query_labels,
+            class_ids,
+        ) in test_loader:
             outputs = model(support_images, support_labels, query_images)
             loss += criterion(outputs, query_labels).item()
             _, predicted = torch.max(outputs.data, 1)

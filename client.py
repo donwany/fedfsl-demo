@@ -1,16 +1,15 @@
-import flwr as fl
 from collections import OrderedDict
 from typing import List
 
+import flwr as fl
 import numpy as np
 import torch
-import tensorflow as tf
 import torch.nn as nn
 from torchvision.models import resnet18
 
 from model import PrototypicalNetworks
-from utils import load_data
 from train import train, test, test_fedfsl, train_fedfsl
+from utils import load_data
 
 DEVICE = torch.device("cpu")  # Try "cuda" to train on GPU
 print(f"Training on {DEVICE} using PyTorch {torch.__version__} and Flower {fl.__version__}")
@@ -47,8 +46,8 @@ class FlowerClient(fl.client.NumPyClient):
         set_parameters(self.net, parameters)
         # self.net.set_weights(parameters)
         # train model on local device with one epoch
-        train(self.net, self.train_loader, self.test_loader, epochs=10)
-        # train_fedfsl(self.net, self.train_loader)
+        # train(self.net, self.train_loader, self.test_loader, epochs=1)
+        train_fedfsl(self.net, self.train_loader)
         # return parameters back to the central server for aggregation
         return get_parameters(self.net), len(self.train_loader.dataset), {}
 
@@ -59,13 +58,14 @@ class FlowerClient(fl.client.NumPyClient):
         set_parameters(self.net, parameters)
         # self.net.set_weights(parameters)
         # Evaluate global model parameters on the local val data
-        loss, accuracy = test(self.net, self.test_loader)
-        # total_predictions, correct_predictions = test_fedfsl(self.net, self.test_loader)
-        print(f"Evaluation loss: {loss} and accuracy: {accuracy}")
-        return float(loss), len(self.test_loader), {"accuracy": float(accuracy)}
+        # loss, accuracy = test(self.net, self.test_loader)
+        total_predictions, correct_predictions = test_fedfsl(self.net, self.test_loader)
+        print(f"Total predictions: {total_predictions} and accuracy: {correct_predictions}")
+        # print(f"Evaluation loss: {loss} and accuracy: {accuracy}")
+        # return float(loss), len(self.test_loader), {"accuracy": float(accuracy)}
 
-        #return len(self.test_loader), {"total predictions": total_predictions,
-        #                               "correct predictions": correct_predictions}
+        return len(self.test_loader), {"total predictions": total_predictions,
+                                       "correct predictions": correct_predictions}
 
 
 def main() -> None:
@@ -81,7 +81,7 @@ def main() -> None:
     client = FlowerClient(net=net, train_loader=train_loader, test_loader=test_loader)
 
     # start flower client
-    fl.client.start_numpy_client(server_address="127.0.0.1:5002", client=client)
+    fl.client.start_numpy_client(server_address="0.0.0.0:5002", client=client)
 
 
 if __name__ == '__main__':
